@@ -37,6 +37,9 @@ with open(filepath + '/imu_pose.txt', 'r') as f:  # imu_circle   imu_spline
 position1 = []
 quaterntions1 = []
 timestamp1 = []
+position3 = []
+quaterntions3 = []
+timestamp3 = []
 with open(filepath + '/imu_int_pose.txt', 'r') as f:  # imu_pose   imu_spline
 
     data = f.readlines()  # txt中所有字符串读入data
@@ -47,6 +50,7 @@ with open(filepath + '/imu_int_pose.txt', 'r') as f:  # imu_pose   imu_spline
         # timestamp.append( numbers_float[0])
         # quaterntions1.append( [numbers_float[tx_index+6], numbers_float[tx_index+3],numbers_float[tx_index+4],numbers_float[tx_index+5]   ] )   # qw,qx,qy,qz
         position1.append([numbers_float[tx_index], numbers_float[tx_index + 1], numbers_float[tx_index + 2]])
+        position3.append([numbers_float[12], numbers_float[13], numbers_float[14]])
 
 position2 = []
 quaterntions2 = []
@@ -69,10 +73,12 @@ ax = fig.gca(projection='3d')
 xyz = zip(*position)
 xyz1 = zip(*position1)
 xyz2 = zip(*position2)
+xyz3 = zip(*position3)
 print
 ax.plot(xyz[0], xyz[1], xyz[2], label='gt')
 ax.plot(xyz1[0], xyz1[1], xyz1[2], label='imu_int')
-ax.plot(xyz2[0], xyz2[1], xyz2[2], label='noise')
+#ax.plot(xyz2[0], xyz2[1], xyz2[2], label='noise')
+ax.plot(xyz3[0], xyz3[1], xyz3[2], label='mid_value')
 ax.legend()
 
 ax.set_xlabel('X')

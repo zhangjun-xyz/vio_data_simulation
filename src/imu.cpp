@@ -130,6 +130,10 @@ void IMU::testImu(std::string src, std::string dist)
     Eigen::Vector3d Pwb = init_twb_;              // position :    from  imu measurements
     Eigen::Quaterniond Qwb(init_Rwb_);            // quaterniond:  from imu measurements
     Eigen::Vector3d Vw = init_velocity_;          // velocity  :   from imu measurements
+    Eigen::Vector3d Pwb1 = init_twb_;              // position :    from  imu measurements
+    Eigen::Quaterniond Qwb1(init_Rwb_);            // quaterniond:  from imu measurements
+    Eigen::Quaterniond Qwb0(init_Rwb_);            // quaterniond:  from imu measurements
+    Eigen::Vector3d Vw1 = init_velocity_;          // velocity  :   from imu measurements
     Eigen::Vector3d gw(0,0,-9.81);    // ENU frame
     Eigen::Vector3d temp_a;
     Eigen::Vector3d theta;
@@ -151,6 +155,14 @@ void IMU::testImu(std::string src, std::string dist)
         Pwb = Pwb + Vw * dt + 0.5 * dt * dt * acc_w;
 
         /// 中值积分
+        Eigen::Vector3d d_theta_half1 = 0.5 * (imudata[i].imu_gyro + imudata[i - 1].imu_gyro) * dt / 2.0;
+        Eigen::Quaterniond dq1(1, d_theta_half1.x(), d_theta_half1.y(), d_theta_half1.z());
+
+        Qwb1 = Qwb0 * dq1;
+        Qwb0 = Qwb1;
+        temp_a = 0.5 * (Qwb1 * (imudata[i].imu_acc) + gw + Qwb0 * (imudata[i - 1].imu_acc) + gw);
+        Vw1 = Vw1 + temp_a* dt;
+        Pwb1 = Pwb1 + Vw1 * dt + 0.5 * dt * dt * temp_a;
 
         //　按着imu postion, imu quaternion , cam postion, cam quaternion 的格式存储，由于没有cam，所以imu存了两次
         save_points<<imupose.timestamp<<" "
@@ -161,13 +173,13 @@ void IMU::testImu(std::string src, std::string dist)
                    <<Pwb(0)<<" "
                    <<Pwb(1)<<" "
                    <<Pwb(2)<<" "
-                   <<Qwb.w()<<" "
-                   <<Qwb.x()<<" "
-                   <<Qwb.y()<<" "
-                   <<Qwb.z()<<" "
-                   <<Pwb(0)<<" "
-                   <<Pwb(1)<<" "
-                   <<Pwb(2)<<" "
+                   <<Qwb1.w()<<" "
+                   <<Qwb1.x()<<" "
+                   <<Qwb1.y()<<" "
+                   <<Qwb1.z()<<" "
+                   <<Pwb1(0)<<" "
+                   <<Pwb1(1)<<" "
+                   <<Pwb1(2)<<" "
                    <<std::endl;
 
     }
