@@ -11,9 +11,7 @@
 std::vector < std::pair< Eigen::Vector4d, Eigen::Vector4d > >
 CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::Vector4d> >& points)
 {
-
     std::vector < std::pair< Eigen::Vector4d, Eigen::Vector4d > > lines;
-
     std::ifstream f;
     f.open("house_model/house.txt");
 
@@ -26,37 +24,17 @@ CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::V
             std::stringstream ss;
             ss << s;
             double x,y,z;
-            ss >> x;
-            ss >> y;
-            ss >> z;
+            ss >> x >> y >> z;
             Eigen::Vector4d pt0( x, y, z, 1 );
-            ss >> x;
-            ss >> y;
-            ss >> z;
+            ss >> x >> y >> z;
             Eigen::Vector4d pt1( x, y, z, 1 );
 
-            bool isHistoryPoint = false;
-            for (int i = 0; i < points.size(); ++i) {
-                Eigen::Vector4d pt = points[i];
-                if(pt == pt0)
-                {
-                    isHistoryPoint = true;
-                }
-            }
-            if(!isHistoryPoint)
+            if (std::find(points.begin(), points.end(), pt0) == points.end()) {
                 points.push_back(pt0);
-
-            isHistoryPoint = false;
-            for (int i = 0; i < points.size(); ++i) {
-                Eigen::Vector4d pt = points[i];
-                if(pt == pt1)
-                {
-                    isHistoryPoint = true;
-                }
             }
-            if(!isHistoryPoint)
+            if (std::find(points.begin(), points.end(), pt1) == points.end()) {
                 points.push_back(pt1);
-
+            }
             // pt0 = Twl * pt0;
             // pt1 = Twl * pt1;
             lines.push_back( std::make_pair(pt0,pt1) );   // lines
@@ -70,10 +48,7 @@ CreatePointsLines(std::vector<Eigen::Vector4d, Eigen::aligned_allocator<Eigen::V
         points.push_back(p);
     }
 
-    // save points
-    std::stringstream filename;
-    filename<<"all_points.txt";
-    save_points(filename.str(),points);
+    save_points("all_points.txt", points);
     return lines;
 }
 
@@ -109,7 +84,7 @@ int main(){
     // imu pose gyro acc
     std::vector< MotionData > imudata;
     std::vector< MotionData > imudata_noise;
-    for (float t = params.t_start; t<params.t_end;) {
+    for (auto t = params.t_start; t < params.t_end; t += 1.0/params.imu_frequency) {
         MotionData data = imuGen.MotionModel(t);
         imudata.push_back(data);
 
@@ -117,12 +92,15 @@ int main(){
         MotionData data_noise = data;
         imuGen.addIMUnoise(data_noise);
         imudata_noise.push_back(data_noise);
-
-        t += 1.0/params.imu_frequency;
     }
-    imuGen.init_velocity_ = imudata[0].imu_velocity;
-    imuGen.init_twb_ = imudata.at(0).twb;
-    imuGen.init_Rwb_ = imudata.at(0).Rwb;
+
+    if (imudata.empty()) {
+        return -1;
+    }
+
+    imuGen.init_velocity_ = imudata.front().imu_velocity;
+    imuGen.init_twb_ = imudata.front().twb;
+    imuGen.init_Rwb_ = imudata.front().Rwb;
     save_Pose("imu_pose.txt",imudata);
     save_Pose("imu_pose_noise.txt",imudata_noise);
 
@@ -131,17 +109,19 @@ int main(){
 
     // cam pose
     std::vector< MotionData > camdata;
-    for (float t = params.t_start; t<params.t_end;) {
-
+    for (auto t = params.t_start; t < params.t_end; t += 1.0/params.cam_frequency) {
         MotionData imu = imuGen.MotionModel(t);   // imu body frame to world frame motion
         MotionData cam;
 
         cam.timestamp = imu.timestamp;
-        cam.Rwb = imu.Rwb * params.R_bc;    // cam frame in world frame
-        cam.twb = imu.twb + imu.Rwb * params.t_bc; //  Tcw = Twb * Tbc ,  t = Rwb * tbc + twb
+        const Eigen::Matrix3d &Rwb = imu.Rwb;
+        const Eigen::Matrix3d Rwc = Rwb * params.R_bc;
+        cam.Rwb = Rwc;
+        const Eigen::Vector3d &twb = imu.twb;
+        const Eigen::Vector3d twc = Rwb * params.t_bc + twb;
+        cam.twb = twc;
 
         camdata.push_back(cam);
-        t += 1.0/params.cam_frequency;
     }
     save_Pose("cam_pose.txt",camdata);
     save_Pose_asTUM("cam_pose_tum.txt",camdata);

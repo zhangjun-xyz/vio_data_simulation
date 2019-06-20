@@ -28,8 +28,8 @@ struct MotionData
 };
 
 // euler2Rotation:   body frame to interitail frame
-Eigen::Matrix3d euler2Rotation( Eigen::Vector3d  eulerAngles);
-Eigen::Matrix3d eulerRates2bodyRates(Eigen::Vector3d eulerAngles);
+Eigen::Matrix3d euler2Rotation(const Eigen::Vector3d &eulerAngles);
+Eigen::Matrix3d eulerRates2bodyRates(const Eigen::Vector3d &eulerAngles);
 
 
 class IMU
